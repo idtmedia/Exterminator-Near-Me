@@ -1,0 +1,224 @@
+<?php 
+get_header();
+/*******************************
+* Search County by Postal Code feature
+* Author: ThangNN
+* creativeOSC.com
+********************************/
+if($_REQUEST['select']!=""):
+	$key = 'AIzaSyA_jpfyMzqUzIA10YMOt-IlkD6gGSmEEzc';
+	$url = "https://maps.google.com/maps/api/geocode/json?address=".urlencode($_REQUEST['select'])."&key=".$key."&sensor=true";
+	// $url = "https://www.mapdevelopers.com/what-county-am-i-in.php?address=80232";
+	echo $url;
+	$ch = curl_init();
+	curl_setopt($ch, CURLOPT_URL, $url);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+	curl_setopt($ch, CURLOPT_PROXYPORT, 3128);
+	curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+	$response = curl_exec($ch);
+	curl_close($ch);
+	$response_a = json_decode($response);
+	// var_dump($response_a);
+	$city = $response_a->results[0]->address_components[3]->long_name;
+	$county = $response_a->results[0]->address_components[2]->short_name;
+	// echo '<pre>';
+	if($county!=""){
+		$parent_page = get_page_by_title( $city.' Pest Control' );
+	
+		$pages = get_pages(array('child_of' => $parent_page->ID)); 
+		foreach ( $pages as $page ) {
+			if(strpos($page->post_title, $county)!==false){
+				wp_redirect(get_permalink($page->ID));
+			} 
+		}
+	}
+	// var_dump($response_a->results[0]->address_components[3]->long_name);
+	// var_dump($response_a->results[0]->address_components[2]->short_name);
+	// var_dump($response_a);
+	// echo '</pre>';
+endif;
+/*******************************
+* Exterminator near me feature
+* Author: ThangNN
+* creativeOSC.com
+********************************/
+if(is_front_page()):
+	$geo_data = unserialize(file_get_contents('http://www.geoplugin.net/php.gp?ip='.$_SERVER['REMOTE_ADDR'])); 
+	$city = $geo_data['geoplugin_city'];
+	// $city = 'california'; //Hard code for testing
+	// echo $city;
+	$term = listingpro_term_exist($city,'location');
+	if(!empty($term)){
+		$lpsLoc=$term['term_id'];
+	}else{
+		$lpsLoc = 27;  // Default show 3 listings belongs NewYork
+	}
+	// echo $lpsLoc;
+	$locQuery = array(
+		'taxonomy' => 'location',
+		'field' => 'id',
+		'terms' => $lpsLoc,
+		'operator'=> 'IN' //Or 'AND' or 'NOT IN'
+	);
+
+	$type = 'listing';
+	$lporderby = 'date';
+	$lporders = 'DESC';
+	$args = array(
+		'post_type' => $type,
+		'post_status' => 'publish',
+		'posts_per_page' => 3,
+		's'	=> '',
+		'tax_query' => array(
+			$locQuery
+		),
+		'orderby' => $lporderby,
+		'order'   => $lporders,
+	);
+	$deafaultFeatImg = lp_default_featured_image_listing();
+	$my_query = null;
+	$my_query = new WP_Query($args);
+	?>
+	<section>
+	<div id="lp_5b5034d8eedca" class="lp-section-row ">
+		<div class="lp_section_inner  clearfix container">
+		   <div class="row lp-section-content clearfix">
+			  <div class="wpb_column vc_column_container vc_col-sm-12">
+				 <div class="vc_column-inner ">
+					<div class="wpb_wrapper">
+					   <div class="vc_empty_space" style="height: 32px"><span class="vc_empty_space_inner"></span></div>
+					   <div class="wpb_text_column wpb_content_element ">
+						  <div class="wpb_wrapper">
+							 <h1><?php _e('Exterminator In Your State'); ?></h1>
+						  </div>
+					   </div>
+					</div>
+				 </div>
+			  </div>
+		   </div>
+		</div>
+	</div>
+	<div id="lp_5b5034d8effa3" class="lp-section-row home-three">
+	   <div class="lp_section_inner  clearfix container">
+		  <div class="row lp-section-content clearfix">
+			<?php if( $my_query->have_posts() ):
+				while ($my_query->have_posts()) : $my_query->the_post();  
+					//get_template_part( 'listing-loop' );							
+				?>
+			 <div class="wpb_column vc_column_container vc_col-sm-4">
+				<div class="vc_column-inner ">
+				   <div class="wpb_wrapper">
+					  <div class="wpb_single_image wpb_content_element vc_align_center" style="border: 1px solid #cacaca; border-bottom: none;">
+						 <figure class="wpb_wrapper vc_figure" style="width: 100%;">
+							<div class="vc_single_image-wrapper   vc_box_border_grey"  style="width: 100%;">
+							<?php 
+							if ( has_post_thumbnail()) {
+								$image = wp_get_attachment_image_src( get_post_thumbnail_id( get_the_ID()), 'listingpro-blog-grid' );
+									if(!empty($image[0])){
+										echo "<a href='".get_the_permalink()."' >
+												<img src='" . $image[0] . "' with='100%' style='width: 100%;'/>
+											</a>";
+									}else {
+										echo '
+										<a href="'.get_the_permalink().'" >
+											<img src="'.esc_html__('https://placeholdit.imgix.net/~text?txtsize=33&w=372&h=240', 'listingpro').'" alt=""  with="100%" style="width: 100%;">
+										</a>';
+									}	
+							}elseif(!empty($deafaultFeatImg)){
+								echo "<a href='".get_the_permalink()."' >
+									<img src='" . $deafaultFeatImg . "'  with='100%' style='width: 100%;'/>
+								</a>";
+							}else {
+								echo '
+								<a href="'.get_the_permalink().'" >
+									<img src="'.esc_html__('https://placeholdit.imgix.net/~text?txtsize=33&w=372&h=240', 'listingpro').'" alt=""  with="100%" style="width: 100%;">
+								</a>';
+							}
+							?>						
+							</div>
+						 </figure>
+					  </div>
+					  <div class="wpb_text_column wpb_content_element ">
+						 <div class="wpb_wrapper">
+							<h3><a href='<?php echo get_the_permalink(); ?>' ><?php the_title(); ?></a></h3>
+							<?php 
+							$str = wpautop( get_the_content() );
+							// $str = substr( $str, 0, strpos( $str, '</p>' ) + 4 );
+							$str = limit_text(strip_tags($str, '<a><strong><em>'), 20);
+							echo '<p>' . $str . '</p>';
+							?>
+						 </div>
+					  </div>
+				   </div>
+				</div>
+			 </div>
+			 <?php 
+				endwhile;						
+			endif; ?>
+		  </div>
+	   </div>
+	</div>
+	</section>
+<?php
+
+endif;
+/****************** End Examinator near me *****************/
+the_post();
+if(has_shortcode( get_the_content(), 'vc_row' ) || has_shortcode( get_the_content(), 'listingpro_submit' ) || has_shortcode( get_the_content(), 'listingpro_pricing' ) || is_front_page()) {
+	
+	if(has_shortcode( get_the_content(), 'vc_row' ) && has_shortcode( get_the_content(), 'listingpro_promotional' )){
+		?>
+		<section class="aliceblue lp-blog-for-app-view">
+				<?php the_content(); ?>
+		</section>
+		 <?php
+	}else{
+		?>
+	 <section id="main-content">
+		<?php the_content(); ?>
+	 </section>
+<?php
+	}
+	
+	
+}else{
+	?>
+	<!-- section-contianer open -->
+	<div class="section-contianer">
+		
+			<div class="container page-container-five">
+				<!-- page title close -->
+				<div class="row">
+					<!-- content open -->
+					<div class="col-md-8 col-sm-8">
+						<div class="blog-post clearfix">
+						<div class="post-content blog-test-page">
+							<?php the_content(); ?>
+						</div>
+						<?php wp_link_pages(); ?>
+						<?php comments_template('', true); ?>
+					</div>
+					</div>
+					<!-- content close -->
+					<!-- sider open -->
+					<div class="col-md-4 col-sm-4 listing-second-view">
+						<div class="side-bar">
+						<?php get_template_part("sidebar");?>
+						</div>
+					</div>
+					
+				</div>
+			</div>
+		
+	</div>
+					
+					
+				
+		
+				
+	
+
+	<?php
+}
+get_footer(); ?>
